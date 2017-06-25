@@ -453,26 +453,14 @@ Wire Wire Line
 $Comp
 L CONN_01X06 J2
 U 1 1 592BABFC
-P 6650 3400
-F 0 "J2" H 6650 3750 50  0000 C CNN
-F 1 "CONN_01X06" V 6750 3400 50  0000 C CNN
-F 2 "Pin_Headers:Pin_Header_Straight_1x06_Pitch2.54mm" H 6650 3400 50  0001 C CNN
-F 3 "" H 6650 3400 50  0001 C CNN
-	1    6650 3400
+P 10200 3450
+F 0 "J2" H 10200 3800 50  0000 C CNN
+F 1 "CONN_01X06" V 10300 3450 50  0000 C CNN
+F 2 "Pin_Headers:Pin_Header_Straight_1x06_Pitch2.54mm" H 10200 3450 50  0001 C CNN
+F 3 "" H 10200 3450 50  0001 C CNN
+	1    10200 3450
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	6250 3150 6450 3150
-Wire Wire Line
-	6250 3250 6450 3250
-Wire Wire Line
-	6250 3350 6450 3350
-Wire Wire Line
-	6250 3450 6450 3450
-Wire Wire Line
-	6250 3550 6450 3550
-Wire Wire Line
-	6250 3650 6450 3650
 $Comp
 L R R4
 U 1 1 594DDEF4
@@ -655,4 +643,26 @@ Wire Wire Line
 	4800 3650 4700 3650
 Connection ~ 4200 3650
 Connection ~ 4200 3350
+Text Label 10000 3700 2    60   ~ 0
+PA4
+Text Label 6250 3250 0    60   ~ 0
+PA5
+Text Label 6250 3350 0    60   ~ 0
+PA6
+Text Label 6250 3450 0    60   ~ 0
+PA7
+Text Label 6250 3550 0    60   ~ 0
+PA9
+Text Label 6250 3650 0    60   ~ 0
+PA10
+Text Label 10000 3600 2    60   ~ 0
+PA5
+Text Label 10000 3500 2    60   ~ 0
+PA6
+Text Label 10000 3400 2    60   ~ 0
+PA7
+Text Label 10000 3300 2    60   ~ 0
+PA9
+Text Label 10000 3200 2    60   ~ 0
+PA10
 $EndSCHEMATC
