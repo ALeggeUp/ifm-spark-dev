@@ -653,4 +653,6 @@ Wire Wire Line
 	4800 3550 4800 3650
 Wire Wire Line
 	4800 3650 4700 3650
+Connection ~ 4200 3650
+Connection ~ 4200 3350
 $EndSCHEMATC
