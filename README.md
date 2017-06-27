@@ -5,7 +5,8 @@
 What is it?
 -----------
 
-This is an example project that uses Gradle to build and test an embedded application.
+IFM Spark Dev Board is a minimal Cortex-M0 dev board for experimentation.
+The firmware is an example project that uses Gradle to build and test an embedded application.
 It uses the examples included with the CppUTest project to show how it would work, the
 embedded application doesn't do anything other than contain the objects to test.
 
