@@ -1,0 +1,512 @@
+/*
+ * build.gradle
+ *
+ * Created by Stephen Legge <stephen@aleggeup.com>, October 2016
+ *
+ * Copyright (C) 2016-2017 [ A Legge Up ], Stephen Legge <stephen@aleggeup.com>
+ * All Rights Reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of [ A Legge Up ], [ A Legge Up Consulting] nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+apply plugin: 'c'
+apply plugin: 'cpp'
+apply plugin: 'assembler'
+
+apply from: "gradle/common-functions.gradle"
+apply from: "gradle/repositories.gradle"
+apply from: "gradle/toolchains.gradle"
+
+description = """
+Example embedded project with CppUTest examples using Gradle
+
+Project name: ${project.name}
+Project version: ${project.version}
+"""
+
+model {
+
+    platforms {
+        "x86_64-linux" {
+            architecture "x86_64"
+            operatingSystem "linux"
+        }
+
+        "x86_64-pc-cygwin" {
+            architecture "x86_64"
+            operatingSystem "windows"
+        }
+
+        "osx_x86-64" {
+            architecture "x86_64"
+            operatingSystem "osx"
+        }
+    }
+
+    buildTypes {
+        debug
+        release
+    }
+
+    flavors {
+        community
+    }
+
+    components {
+
+        'interface'(NativeLibrarySpec) {
+            targetPlatform "osx_x86-64"
+            targetPlatform "x86_64-pc-cygwin"
+            targetPlatform "x86_64-linux"
+            targetPlatform "STM32F103xB"
+            targetPlatform "xtensa-lx106-elf"
+
+            targetBuildTypes "debug", "release"
+            targetFlavors "community"
+
+            sources {
+
+                c {
+                    source {
+                        srcDirs "src/interface/c"
+                        include "**/*.c"
+                        exclude "**/platform/**"
+                    }
+
+                    exportedHeaders {
+                        srcDirs "src/interface/include"
+                    }
+                }
+
+                cpp {
+                    source {
+                        srcDirs "src/interface/cpp"
+                        include "**/*.cpp", "**/*.c++", "**/*.cc", "**/*.C"
+                        exclude "**/platform/**"
+                    }
+
+                    exportedHeaders {
+                        srcDirs "src/interface/include"
+                    }
+                }
+            }
+
+            binaries {
+                all {
+                    buildable = !name.endsWith("SharedLibrary")
+                }
+            }
+        }
+
+        firmware(NativeExecutableSpec) { f ->
+            targetPlatform "STM32F103xB"
+            targetPlatform "xtensa-lx106-elf"
+            targetBuildTypes "debug", "release"
+            targetFlavors "community"
+            baseName imageBaseName + "-" + project.version + ".elf"
+
+            sources {
+
+                asm {
+                    source {
+                        srcDirs "src/firmware/asm", "src/shared/asm"
+                        include "**/*.s", "**/*.S"
+                        exclude "**/platform/**"
+                    }
+                }
+
+                c {
+                    lib library: 'esp8266-nonos-main', linkage: 'static'
+                    lib library: 'esp8266-nonos-gcc', linkage: 'static'
+                    lib library: 'interface', linkage: 'static'
+
+                    source {
+                        srcDirs "src/firmware/c", "src/shared/c"
+                        include "**/*.c"
+                        exclude "**/platform/**"
+                    }
+
+                    exportedHeaders {
+                        srcDirs "src/firmware/include", "src/shared/include"
+                    }
+                }
+
+                cpp {
+                    lib library: 'esp8266-nonos-main', linkage: 'static'
+                    lib library: 'esp8266-nonos-gcc', linkage: 'static'
+                    lib library: 'interface', linkage: 'static'
+
+                    source {
+                        srcDirs "src/firmware/cpp", "src/shared/cpp"
+                        include "**/*.cpp", "**/*.c++", "**/*.cc", "**/*.C"
+                        exclude "**/platform/**"
+                    }
+
+                    exportedHeaders {
+                        srcDirs "src/firmware/include", "src/shared/include"
+                    }
+                }
+            }
+
+            binaries {
+                all {
+
+                    if (targetPlatform.name.startsWith("STM32")) {
+                        sources {
+                            platformSTM32F103xBAsm(AssemblerSourceSet) {
+                                source.srcDir "src/firmware/asm/platform/STM32F103xB"
+                                source.include "**/*.s", "**/*.S"
+                                lib library: 'cmsis-st-core', linkage: 'api'
+                                lib library: 'cmsis-st-device-stm32f1xx', linkage: 'api'
+                            }
+
+                            platformSTM32F103xBC(CSourceSet) {
+                                source.srcDir "src/firmware/c/platform/STM32F103xB"
+                                source.include "**/*.c"
+                                exportedHeaders.srcDirs "src/firmware/include"
+                                lib library: 'cmsis-st-core', linkage: 'api'
+                                lib library: 'cmsis-st-device-stm32f1xx', linkage: 'api'
+                            }
+
+                            platformSTM32F103xBCpp(CppSourceSet) {
+                                source.srcDir "src/firmware/cpp/platform/STM32F103xB"
+                                source.include "**/*.cpp", "**/*.c++", "**/*.cc", "**/*.C"
+                                exportedHeaders.srcDirs "src/firmware/include"
+                                lib library: 'cmsis-st-core', linkage: 'api'
+                                lib library: 'cmsis-st-device-stm32f1xx', linkage: 'api'
+                            }
+                        }
+                    } else if (targetPlatform.name.startsWith("xtensa-lx106")) {
+                        sources {
+                            platformSTM32F103xBAsm(AssemblerSourceSet) {
+                                source.srcDir "src/firmware/asm/platform/xtensa-lx106-elf"
+                                source.include "**/*.s", "**/*.S"
+                                lib library: 'esp8266-nonos-main', linkage: 'static'
+                                lib library: 'esp8266-nonos-gcc', linkage: 'static'
+                            }
+
+                            platformSTM32F103xBC(CSourceSet) {
+                                source.srcDir "src/firmware/c/platform/xtensa-lx106-elf"
+                                source.include "**/*.c"
+                                exportedHeaders.srcDirs "src/firmware/include"
+                                lib library: 'esp8266-nonos-main', linkage: 'static'
+                                lib library: 'esp8266-nonos-gcc', linkage: 'static'
+                                lib library: 'esp8266-nonos-libdriver', linkage: 'static'
+                            }
+
+                            platformSTM32F103xBCpp(CppSourceSet) {
+                                source.srcDir "src/firmware/cpp/platform/xtensa-lx106-elf"
+                                source.include "**/*.cpp", "**/*.c++", "**/*.cc", "**/*.C"
+                                exportedHeaders.srcDirs "src/firmware/include"
+                                lib library: 'esp8266-nonos-main', linkage: 'static'
+                                lib library: 'esp8266-nonos-gcc', linkage: 'static'
+                                lib library: 'esp8266-nonos-pp', linkage: 'static'
+                                lib library: 'esp8266-nonos-phy', linkage: 'static'
+                                lib library: 'esp8266-nonos-net80211', linkage: 'static'
+                                lib library: 'esp8266-nonos-lwip', linkage: 'static'
+                                lib library: 'esp8266-nonos-wpa', linkage: 'static'
+                                lib library: 'esp8266-nonos-wps', linkage: 'static'
+                            }
+                        }
+                    }
+
+                    if (targetPlatform.name.startsWith("STM32")) {
+                        cCompiler.define targetPlatform.name
+                        cppCompiler.define targetPlatform.name
+                    }
+
+                    linker.args "-Wl,-Map=build/exe/" + component.name + "/" + targetPlatform.name + "/" + buildType.name + "/" + "${baseName}.map,--cref"
+
+                    if (toolChain in Gcc && buildType == buildTypes.debug) {
+                        cppCompiler.define "DEBUG"
+                        cCompiler.define "DEBUG"
+                        cppCompiler.args "-g", "-O0"
+                        cCompiler.args "-g", "-O0"
+                        assembler.args "-g", "-O0"
+                    } else if (toolChain in Gcc && buildType != buildTypes.debug) {
+                        cppCompiler.define "NDEBUG"
+                        cCompiler.define "NDEBUG"
+                        cppCompiler.args "-Os"
+                        cCompiler.args "-Os"
+                        assembler.args "-Os"
+                    }
+                }
+            }
+        }
+
+        utestrunner(NativeExecutableSpec) {
+            targetPlatform "osx_x86-64"
+            targetPlatform "x86_64-pc-cygwin"
+            targetPlatform "x86_64-linux"
+
+            targetBuildTypes "debug"
+            targetFlavors "community"
+
+            sources {
+                asm {
+                    source {
+                        srcDirs "src/shared/asm", "src/test/asm"
+                        include "**/*.s", "**/*.S"
+                        exclude "**/impl/**"
+                        exclude "**/platform/**"
+                    }
+                }
+
+                c {
+                    lib library: 'interface', linkage: 'static'
+                    lib library: 'cmsis-st-core', linkage: 'api'
+                    lib library: 'cmsis-st-device-stm32f1xx', linkage: 'api'
+                    lib library: 'cpputest', linkage: 'static'
+                    lib library: 'cpputest-ext', linkage: 'static'
+
+                    source {
+                        srcDirs "src/firmware/c", "src/shared/c", "src/test/c"
+                        include "**/*.c"
+                        exclude "**/impl/**"
+                        exclude "**/platform/**"
+                    }
+
+                    exportedHeaders {
+                        srcDirs "src/firmware/include", "src/shared/include"
+                    }
+                }
+
+                cpp {
+                    lib library: 'interface', linkage: 'static'
+                    lib library: 'cmsis-st-core', linkage: 'api'
+                    lib library: 'cmsis-st-device-stm32f1xx', linkage: 'api'
+                    lib library: 'cpputest', linkage: 'static'
+                    lib library: 'cpputest-ext', linkage: 'static'
+
+                    source {
+                        srcDirs "src/firmware/cpp", "src/shared/cpp", "src/test/cpp"
+                        include "**/*.cpp", "**/*.c++", "**/*.cc", "**/*.C"
+                        exclude "**/impl/**"
+                        exclude "**/platform/**"
+                    }
+
+                    exportedHeaders {
+                        srcDirs "src/firmware/include", "src/shared/include", "src/test/include"
+                    }
+                }
+            }
+
+            binaries.all {
+                if (targetPlatform.name.startsWith("STM")) {
+                    cCompiler.define targetPlatform.name
+                    cppCompiler.define targetPlatform.name
+                }
+
+                cppCompiler.define "UTEST"
+                cppCompiler.define "UTESTRUNNER"
+                cppCompiler.define "CPPUTESTRUNNER"
+
+                cppCompiler.args "--coverage"
+
+                if (toolChain in Gcc && buildType == buildTypes.debug) {
+                    cppCompiler.define "DEBUG"
+                    cCompiler.define "DEBUG"
+                    cppCompiler.args "-g", "-O0"
+                    cCompiler.args "-g", "-O0"
+                    assembler.args "-g", "-O0"
+                } else if (toolChain in Gcc && buildType != buildTypes.debug) {
+                    cppCompiler.define "NDEBUG"
+                    cCompiler.define "NDEBUG"
+                    cppCompiler.args "-Os"
+                    cCompiler.args "-Os"
+                    assembler.args "-Os"
+                }
+            }
+        }
+
+    }
+
+    tasks { t ->
+        $.components.firmware.binaries.each { binary ->
+            def processTask = binary.tasks.taskName("process")
+
+            t.create(processTask) {
+                def elfFile = binary.tasks.link.outputFile
+                def parentPath = elfFile.parent
+                def baseFile = elfFile.name.replace('.elf', '').replace('.exe', '')
+                def binFile = new File(parentPath, baseFile + ".bin")
+                def hexFile = new File(parentPath, baseFile + ".ihex")
+                def lstFile = new File(parentPath, baseFile + ".lst")
+                def sizeFile = new File(parentPath, baseFile + ".size")
+                def parentBase = parentPath.toString() + "/" + baseFile;
+
+                dependsOn binary.tasks.link
+
+                inputs.file elfFile 
+                outputs.files binFile, hexFile, lstFile, sizeFile
+
+                doFirst {
+
+                    if (binary.toolChain in Gcc || binary.toolChain in Clang) {
+
+                        [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objcopy'), '-O', 'binary', elfFile, binFile].execute().waitFor()
+                        [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objcopy'), '-O', 'ihex', elfFile, hexFile].execute().waitFor()
+/*
+                        lstFile.write([project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objdump'), '-Sdh', elfFile].execute().inputStream.text)
+*/
+                        project.file(parentBase + ".dump").write(
+                           [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objdump'), '-x', '-s', elfFile].execute().inputStream.text)
+/*
+                        project.file(parentBase + ".S").write(
+                           [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objdump'), '-S', elfFile].execute().inputStream.text)
+*/
+                        project.file(parentBase + ".sym").write(
+                           [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-nm'), '-g', elfFile].execute().inputStream.text)
+
+                        if (binary.targetPlatform.name.startsWith("xtensa-lx106-elf")) {
+                            [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objcopy'), '--only-section', '.text', '-O', 'binary',
+                                elfFile, project.file(parentBase + ".text.bin")].execute().waitFor()
+
+                            [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objcopy'), '--only-section', '.data', '-O', 'binary',
+                                elfFile, project.file(parentBase + ".data.bin")].execute().waitFor()
+
+                            [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objcopy'), '--only-section', '.rodata', '-O', 'binary',
+                                elfFile, project.file(parentBase + ".rodata.bin")].execute().waitFor()
+
+                            [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-objcopy'), '--only-section', '.irom0.text', '-O', 'binary',
+                                elfFile, project.file(parentBase + ".irom0text.bin")].execute().waitFor()
+
+                            esp8266Combiner(parentBase, 0)
+
+                        }
+
+                        def sizeReport = [project.file(binary.toolChain.path[0].toString() + '/' + binary.targetPlatform.architecture.name + '-size'), elfFile].execute().inputStream.text
+                        sizeFile.write sizeReport
+                        println "\n" + sizeReport
+
+                        println " -> " + binFile
+                        println " -> " + hexFile
+                        println " -> " + lstFile
+                    }
+                }
+            }
+
+            binary.tasks.build.dependsOn processTask
+        }
+
+        $.components.utestrunner.binaries.each { binary ->
+            def utestTask = binary.tasks.taskName("check")
+            t.create(utestTask) {
+                dependsOn binary.tasks.link
+
+                doLast {
+                    def execloc = 'build/exe/utestrunner/'
+     
+                    println "\n==== CppUTest ===="
+
+                    def proc = [binary.tasks.link.outputFile, '-c', '-ojunit', '-v'].execute()
+                    proc.in.eachLine { line -> println line }
+                    proc.err.eachLine { line -> println 'ERROR: ' + line }
+                    def returnCode = proc.waitFor()
+
+                    FileTree tree = fileTree(dir: '.', include: '**/cpputest*.xml')
+                    tree.each { File file ->
+                        file.renameTo(binary.tasks.link.outputFile.parent + "/" + file.name)
+                    }
+
+                    if (returnCode != 0) {
+                        throw new GradleException('CppUTest returned ' + returnCode)
+                    }
+                }
+            }
+
+            binary.tasks.build.dependsOn utestTask
+        }
+    }
+}
+
+task init {
+    def toolDir = new File('.tools')
+
+    if(!toolDir.exists()) {
+        toolDir.mkdirs()
+    }
+
+    def inputFile = new File("gradle/packages.json")
+    def json = new groovy.json.JsonSlurper().parseText(inputFile.text)
+    def osName = System.getProperty("os.name").toLowerCase()
+    def allToolchains = "${toolchains}".split(',')
+
+    json.packages.tools.each { tools ->
+        tools.each { tool ->
+
+            def toolStamp = new File(toolDir, tool.name + "." + tool.version + ".stamp")
+
+            if (!toolStamp.exists()) {
+                if (tool.name in allToolchains) {
+                    println "TOOL: " + tool.name
+
+                    tool.systems.each { sys ->
+
+                        if (sys.host == osHostName(osName)) {
+
+                            def toolFile = new File(toolDir, sys.archiveFileName)
+
+                            if (!toolFile.exists()) {
+                                println "Downloading: " + sys.url + " to " + toolFile
+                                new URL(sys.url).withInputStream { inputStream ->
+                                    toolFile.withOutputStream { it << inputStream }
+                                }
+                            }
+
+                            println "Extracting: " + toolFile.toString()
+                            if (toolFile.toString().contains("tar.bz2")) {
+                                def proc = ["tar", "-C", ".tools/", "-xjf", toolFile].execute()
+                                proc.err.eachLine { line -> println 'ERROR: ' + line }
+                                proc.waitFor()
+                            } else if (toolFile.toString().contains("tar.gz")) {
+                                def proc = ["tar", "-C", ".tools/", "-xzf", toolFile].execute()
+                                proc.err.eachLine { line -> println 'ERROR: ' + line }
+                                proc.waitFor()
+                            } else {
+
+                                def zipToolDir = new File(toolDir, tool.name)
+                                zipToolDir.mkdirs()
+
+                                copy {
+                                    from zipTree(toolFile)
+                                    into zipToolDir
+                                }
+                            }
+                        }
+                    }
+
+                    toolStamp << "..."
+                }
+            }
+        }
+    }
+
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.3'
+}
+

@@ -1,0 +1,9 @@
+language: groovy
+jdk: oraclejdk8
+before_install:
+  - chmod +x gradlew
+install: true
+env:
+  - TERM=dumb
+script:
+  - ./gradlew --stacktrace init
